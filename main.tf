@@ -150,14 +150,14 @@ module "restore-route53-lambda" {
 
   function_name = "restore-route53"
   description = "Restores route53 from backup"
-  handler = "backup_route53.handle"
+  handler = "restore_route53.handle"
   runtime = "python3.7"
 
-  policy_json = data.aws_iam_policy_document.backup-route53.json
+  policy_json = data.aws_iam_policy_document.restore-route53.json
   attach_policy_json = true
 
   source_path = [
-    "${path.module}/backup_route53.py",
+    "${path.module}/restore_route53.py",
     "${path.module}/route53_utils.py"
   ]
 
