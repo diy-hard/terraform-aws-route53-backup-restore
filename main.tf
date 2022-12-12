@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "backup_target" {
-  bucket_prefix = "route53-backup-data-${data.aws_caller_identity.current.account_id}-"
+  bucket_prefix = "r53-backup-${data.aws_caller_identity.current.account_id}-${var.aws_region}-"
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "remove-after-retention" {
@@ -55,15 +55,16 @@ data "aws_iam_policy_document" "backup-route53" {
 }
 
 module "backup-route53-lambda" {
-  source  = "terraform-aws-modules/lambda/aws"
-  version = "4.0.2"
+  source = "terraform-aws-modules/lambda/aws"
+  #version = "4.0.2" #We have to run an earlier version of this module for compatability with TF v0.12.31
+  version = "2.22.0"
 
   function_name = "backup-route53"
-  description = "Backs up Route53 regularly to a bucket"
-  handler = "backup_route53.handle"
-  runtime = "python3.7"
+  description   = "Backs up Route53 regularly to a bucket"
+  handler       = "backup_route53.handle"
+  runtime       = "python3.9"
 
-  policy_json = data.aws_iam_policy_document.backup-route53.json
+  policy_json        = data.aws_iam_policy_document.backup-route53.json
   attach_policy_json = true
 
   source_path = [
@@ -77,23 +78,23 @@ module "backup-route53-lambda" {
 }
 
 resource "aws_lambda_permission" "cw-timed-exec" {
-  statement_id = "AllowExecutionFromCloudWatch"
+  statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
   function_name = module.backup-route53-lambda.lambda_function_name
   principal     = "events.amazonaws.com"
-  source_arn = aws_cloudwatch_event_rule.timed-exec.arn
+  source_arn    = aws_cloudwatch_event_rule.timed-exec.arn
 }
 
 resource "aws_cloudwatch_event_rule" "timed-exec" {
-  name = "every-${var.interval}-minutes"
-  description = "Fires every ${var.interval} minutes"
+  name                = "every-${var.interval}-minutes"
+  description         = "Fires every ${var.interval} minutes"
   schedule_expression = "rate(${var.interval} minutes)"
 }
 
 resource "aws_cloudwatch_event_target" "timed-exec" {
-  rule = aws_cloudwatch_event_rule.timed-exec.name
+  rule      = aws_cloudwatch_event_rule.timed-exec.name
   target_id = module.backup-route53-lambda.lambda_function_name
-  arn = module.backup-route53-lambda.lambda_function_arn
+  arn       = module.backup-route53-lambda.lambda_function_arn
 }
 
 data "aws_iam_policy_document" "restore-route53" {
@@ -145,19 +146,20 @@ data "aws_iam_policy_document" "restore-route53" {
 }
 
 module "restore-route53-lambda" {
-  source  = "terraform-aws-modules/lambda/aws"
-  version = "4.0.2"
+  source = "terraform-aws-modules/lambda/aws"
+  #version = "4.0.2" #We have to run an earlier version of this module for compatability with TF v0.12.31
+  version = "2.22.0"
 
   function_name = "restore-route53"
-  description = "Restores route53 from backup"
-  handler = "backup_route53.handle"
-  runtime = "python3.7"
+  description   = "Restores route53 from backup"
+  handler       = "restore_route53.handle"
+  runtime       = "python3.9"
 
-  policy_json = data.aws_iam_policy_document.backup-route53.json
+  policy_json        = data.aws_iam_policy_document.restore-route53.json
   attach_policy_json = true
 
   source_path = [
-    "${path.module}/backup_route53.py",
+    "${path.module}/restore_route53.py",
     "${path.module}/route53_utils.py"
   ]
 

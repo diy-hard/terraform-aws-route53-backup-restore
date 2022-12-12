@@ -74,7 +74,7 @@ def handle(event, context):
         if len(changes_list) > 0:
             route53.change_resource_record_sets(
                 HostedZoneId=zone['Id'],
-                ChangeBatch={'Comment': 'Restored by HowCrew\'s route53 backup module', 'Changes': changes_list}
+                ChangeBatch={'Comment': 'Restored by route53 backup module', 'Changes': changes_list}
             )
 
     backup_health_checks = json.loads(get_s3_object_as_string('{}/Health checks.json'.format(backup_time)))
